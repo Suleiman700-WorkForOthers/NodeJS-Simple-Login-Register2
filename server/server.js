@@ -4,20 +4,14 @@ const { check, validationResult} = require("express-validator")
 const bcrypt = require('bcrypt');
 const mongoose = require('./database')
 const jwt = require("jsonwebtoken");
-const jwtSecret = "mysecretkey";
-
-// schemas and models
-const { loginSchema } = require("./schemas")
-const LoginModel = mongoose.model('User', loginSchema, 'users');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-
-app.get("/",(request, response) => {
-    response.send("hello from server")
-});
+// schemas and models
+const { userSchema } = require("./schemas")
+const userModel = mongoose.model('User', userSchema, 'users');
 
 app.post("/api/signup",[
         check('fullname', 'Fullname is invalid').isLength({ min: 1 }),
@@ -33,23 +27,16 @@ app.post("/api/signup",[
 
     // response have no errors
     if (errors.isEmpty()) {
-
         // check if email is already in use
-        LoginModel.findOne({email}, (error, result) => {
-            // email already in use
-            if (result != null) {
-                return response.status(409).json({error: 'This email address is already in use'});
-            }
-            else {
+        userModel.findOne({email}, (error, result) => {
+            // available email address
+            if (result == null) {
                 // hash user password
-                bcrypt.hash(password, 10, (error, hash) => {
+                bcrypt.hash(password, 10, (error, hashedPassword) => {
                     if (!error) {
-                        // Store the hash in your database
-                        const hashedPassword = hash
-
                         // create user
-                        LoginModel.create({ fullname, email, password: hashedPassword }, (error, result) => {
-                            // user created
+                        userModel.create({ fullname, email, password: hashedPassword }, (error, result) => {
+                            // user created successfully
                             if (result != null) {
                                 return response.status(200).json();
                             }
@@ -57,18 +44,21 @@ app.post("/api/signup",[
                                 return response.status(500).json({error: 'An error occurred while creating account'});
                             }
                         })
-
                     }
                     else {
-                        console.error(error);
+                        return response.status(500).json({error: 'An error occurred while encrypting your password'});
                     }
                 });
+            }
+            // email address is already in use
+            else {
+                return response.status(409).json({error: 'This email address is already in use'});
             }
         })
     }
     // response have errors
     else {
-        return response.status(400).json({errors: errors.array()});
+        return response.status(400).json({error: 'One or more fields are invalid'});
     }
 }
 );
@@ -89,12 +79,13 @@ app.post("/api/signin",[
         if (requestErrors.isEmpty()) {
 
             // create the model
-            const LoginModel = mongoose.model('User', loginSchema, 'users');
+            const userModel = mongoose.model('User', userSchema, 'users');
 
-            LoginModel.findOne({email}, (error, userData) => {
+            userModel.findOne({email}, (error, userData) => {
+                // no user has been found with that email
                 if (error) {
                     console.error(error);
-                    return response.status(400).json({errors: error});
+                    return response.status(500).json({error: 'An error occurred during sign in process'});
                 }
                 else {
                     // user found with that email
@@ -104,7 +95,6 @@ app.post("/api/signin",[
                         bcrypt.compare(password, hashedPassword, (error, compareResult) => {
                             // invalid password
                             if (!compareResult) {
-                                // store error
                                 return response.status(401).json({error: 'Incorrect email or password'});
                             }
                             // valid password
@@ -114,13 +104,12 @@ app.post("/api/signin",[
                                     email: userData['email'],
                                 };
                                 const options = { expiresIn: '2d' };
-                                const token = jwt.sign(payload, jwtSecret, options);
-                                return response.status(200).json({error: [], token});
+                                const token = jwt.sign(payload, 'mysecretkey', options);
+                                return response.status(200).json({token});
                             }
                         });
                     }
                     else {
-                        // store error
                         return response.status(401).json({error: 'Incorrect email or password'});
                     }
                 }
@@ -128,7 +117,7 @@ app.post("/api/signin",[
         }
         // response have errors
         else {
-            return response.status(400).json({errors: requestErrors.array()});
+            return response.status(400).json({error: 'One or more fields are invalid'});
         }
     });
 
@@ -142,7 +131,7 @@ app.post("/api/is-logged", (request, response) => {
     const token = request.headers['authorization'].split(' ')[1]
 
     // verify the token
-    jwt.verify(token, jwtSecret, (error, decoded) => {
+    jwt.verify(token, 'mysecretkey', (error, decoded) => {
         if (!error) {
             // update flag
             res['isLogged'] = true
@@ -151,9 +140,9 @@ app.post("/api/is-logged", (request, response) => {
             const decodedEmail = decoded['email']
 
             // get user data
-            const LoginModel = mongoose.model('User', loginSchema, 'users');
+            const userModel = mongoose.model('User', userSchema, 'users');
 
-            LoginModel.findOne({email: decodedEmail}, (error, userData) => {
+            userModel.findOne({email: decodedEmail}, (error, userData) => {
                 // user data found
                 if (userData != null) {
                     res['userData'] = userData

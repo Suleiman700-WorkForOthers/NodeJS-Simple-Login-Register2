@@ -33,16 +33,16 @@ form.addEventListener('submit', async (event) => {
     // get password
     const password = document.querySelector('#password').value
 
-    // validate fields
-    if (!email.length || !password.length) {
-        // show error
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: 'One or more fields are invalid',
-        })
-        return
-    }
+    // // validate fields
+    // if (!email.length || !password.length) {
+    //     // show error
+    //     Swal.fire({
+    //         icon: 'error',
+    //         title: 'Error!',
+    //         text: 'One or more fields are invalid',
+    //     })
+    //     return
+    // }
 
     // show loading
     Swal.fire({
