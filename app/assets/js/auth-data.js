@@ -12,7 +12,7 @@ async function getLoggedData() {
     }
 
     // send request to server
-    await fetch('http://localhost:3000/api/is-logged', {
+    await fetch('http://localhost:3000/api/get-auth-data', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,

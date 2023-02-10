@@ -2,12 +2,21 @@ const express = require('express');
 const cors = require('cors')
 const { check, validationResult} = require("express-validator")
 const bcrypt = require('bcrypt');
-const mongoose = require('./database')
 const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+
+// connect to database
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://127.0.0.1:27017/simple-login-register', {useNewUrlParser: true});
+const conn = mongoose.connection;
+conn.on('connected', function() {console.log('database connected successfully')});
+conn.on('disconnected',function(){console.log('database disconnected successfully')})
+conn.on('error', console.error.bind(console, 'connection error:'));
+
 
 // schemas and models
 const { userSchema } = require("./schemas")
@@ -121,7 +130,7 @@ app.post("/api/signin",[
         }
     });
 
-app.post("/api/is-logged", (request, response) => {
+app.post("/api/get-auth-data", (request, response) => {
     const res = {
         'isLogged': false,
         'userData': {}
