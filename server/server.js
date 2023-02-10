@@ -19,7 +19,7 @@ app.get("/",(request, response) => {
     response.send("hello from server")
 });
 
-app.post("/auth/register",[
+app.post("/api/signup",[
         check('fullname', 'Fullname is invalid').isLength({ min: 1 }),
         check('email', 'Email is invalid').isEmail(),
         check('password', 'Password is invalid').isLength( { min: 1 }),
@@ -38,7 +38,7 @@ app.post("/auth/register",[
         LoginModel.findOne({email}, (error, result) => {
             // email already in use
             if (result != null) {
-                return response.status(409).json({errors: [{'msg': 'This email address is already in use'}]});
+                return response.status(409).json({error: 'This email address is already in use'});
             }
             else {
                 // hash user password
@@ -51,10 +51,10 @@ app.post("/auth/register",[
                         LoginModel.create({ fullname, email, password: hashedPassword }, (error, result) => {
                             // user created
                             if (result != null) {
-                                return response.status(200).json({errors: []});
+                                return response.status(200).json();
                             }
                             else {
-                                return response.status(500).json({errors: [{'msg': 'An error occurred while creating account'}]});
+                                return response.status(500).json({error: 'An error occurred while creating account'});
                             }
                         })
 
@@ -73,7 +73,7 @@ app.post("/auth/register",[
 }
 );
 
-app.post("/auth/login",[
+app.post("/api/signin",[
         check('email', 'Email is invalid').isEmail(),
         check('password', 'Password is invalid').isLength( { min: 1 }),
     ],
@@ -105,8 +105,7 @@ app.post("/auth/login",[
                             // invalid password
                             if (!compareResult) {
                                 // store error
-                                const error = {msg: 'Incorrect username or password'}
-                                return response.status(401).json({errors: [error]});
+                                return response.status(401).json({error: 'Incorrect email or password'});
                             }
                             // valid password
                             else {
@@ -116,14 +115,13 @@ app.post("/auth/login",[
                                 };
                                 const options = { expiresIn: '2d' };
                                 const token = jwt.sign(payload, jwtSecret, options);
-                                return response.status(200).json({errors: [], token});
+                                return response.status(200).json({error: [], token});
                             }
                         });
                     }
                     else {
                         // store error
-                        const error = {msg: 'Incorrect username or password'}
-                        return response.status(401).json({errors: [error]});
+                        return response.status(401).json({error: 'Incorrect email or password'});
                     }
                 }
             });
@@ -134,9 +132,9 @@ app.post("/auth/login",[
         }
     });
 
-app.post("/auth/is-logged", (request, response) => {
+app.post("/api/is-logged", (request, response) => {
     const res = {
-        'state': false,
+        'isLogged': false,
         'userData': {}
     }
 
@@ -147,7 +145,7 @@ app.post("/auth/is-logged", (request, response) => {
     jwt.verify(token, jwtSecret, (error, decoded) => {
         if (!error) {
             // update flag
-            res['state'] = true
+            res['isLogged'] = true
 
             // If the token is valid, the decoded payload will contain the original encrypted payload
             const decodedEmail = decoded['email']
@@ -162,7 +160,7 @@ app.post("/auth/is-logged", (request, response) => {
                     return response.status(200).json(res);
                 }
                 else {
-                    res['state'] = false
+                    res['isLogged'] = false
                     return response.status(500).json(res);
                 }
             })
